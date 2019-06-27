@@ -366,7 +366,7 @@ for subNo = 1:9
                     norminv(.95)*std(profile(11:25)),[1 1 1],'valid')==3,1)*.02+.01;
             else
                 latency = find(conv(profile(26:end)-mean(profile(11:25))<...
-                    -norminv(.95)*std(profile(11:25)),[1 1 1],'valid')==23,1)*.02+.01;
+                    -norminv(.95)*std(profile(11:25)),[1 1 1],'valid')==3,1)*.02+.01;
             end
             
             if isempty(latency)
