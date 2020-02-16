@@ -66,16 +66,9 @@ SCrec = cellfun(@(rc,bno) cell2mat(arrayfun(@(ut) accumarray(arrayfun(@(x) find(
     arrayfun(@(w) sum(w==cell2mat(cellfun(@(v) [v.event],rc','Uni',0))),cats(bno)),...
     1:length(rc{1}(1).sig),'Uni',0)),recall,num2cell(1:5),'Uni',0);
 
-% newhist = @(inp) histc(inp,unique(inp,'stable'));
-% indxScram = @(inp,rows) inp(accumarray(cell2mat(arrayfun(@(x) [[indx(find(rows),randperm(sum(rows)));find(~rows)] x*ones(size(inp,1),1)],...
-%     (1:size(inp,2))','Uni',0)),repmat([find(rows);find(~rows)],size(inp,2),1))+repmat(0:size(inp,1):size(inp,1)*(size(inp,2)-1),size(inp,1),1));
 indxScram = @(inp,rows) inp(accumarray([find(rows);find(~rows)],[indx(find(rows),randperm(sum(rows)));find(~rows)]),:);
 
 rng(1)
-% recsamp = arrayfun(@(it) cellfun(@(pt,ptNo) cell2mat(indxScram(mat2cell(pt,ones(size(pt,1),1),size(pt,2)),~isnan(pt(:,1)))),...
-%     SCrec,num2cell(1:length(SCrec)),'Uni',0),1:itts,'Uni',0);
-% recsampF = arrayfun(@(it) cellfun(@(pt,ptNo) cell2mat(indxScram(mat2cell(pt,ones(size(pt,1),1),size(pt,2)),(cats(ptNo)<200)&~isnan(pt(:,1)))),...
-%     SCrec,num2cell(1:length(SCrec)),'Uni',0),1:itts,'Uni',0);
 
 recsamp = arrayfun(@(it) cellfun(@(pt,ptNo) indxScram(pt,~isnan(pt(:,1))),...
     SCrec,num2cell(1:length(SCrec)),'Uni',0),1:itts,'Uni',0);
@@ -125,6 +118,9 @@ fprop = cellfun(@(r,p,scr,bn) arrayfun(@(mr,mp) fprHelp(r,p,mr,mp,scr,bn),...
     meshgrid(-1:1),meshgrid(-1:1)'),reorg(recSplit),reorg(presSplit),reorg(SCrec),...
     {batches(1) batches(2:3) batches(4) batches(5)},'Uni',0);
 
+% Face-selective units
+fsel = reorg(cellfun(@(bn) strcmp({xllog(ismember({xllog.batchname},bn)&([xllog.class]>0)).catsel},'Face'),batches,'Uni',0));
+
 a2 = subplot(5,1,[2 3]);
 subsel = @(inp) cellfun(@(x) x(:,[1 3]),inp,'Uni',0); % For just showing the top and bottom terciles.
 bar(reshape(bsxfun(@plus,([1.5 2.5])',(5*plotord-5)),2*length(plotord),1),cell2mat(subsel(fprop(noFaceUnits>0)))','stacked');
@@ -134,8 +130,8 @@ title('Mean Distribution of Item Recall Response by Persentation Response Tercil
 hold on
 
 % Face units, all exemplars
-allexF = cellfun(@(m,md,bn) mean(nanmean(m(strcmp({xllog(ismember({xllog.batchname},bn)&([xllog.class]>0)).catsel},'Face')))<= ...
-    nanmean(md(:,strcmp({xllog(ismember({xllog.batchname},bn)&([xllog.class]>0)).catsel},'Face')),2)), match,matchDist,{batches(1) batches(2:3) batches(4) batches(5)});
+allexF = cellfun(@(m,md,nx) mean(nanmean(m(fsel{nx}))<= ...
+    nanmean(md(:,fsel{nx}),2)), match,matchDist,num2cell(1:4));
 allexiF = bonfholm(allexF.*(noFaceUnits./noFaceUnits),.05);
 plot(a2,-3+5*plotord(allexiF(noFaceUnits>0)),1.1,'k*')
 text(a2,-3+5*plotord,repmat(1.2,1,sum(noFaceUnits>0)),...
@@ -177,9 +173,9 @@ legend({'Bottom Tercile Presentation','Middle Tercile Presentation','Top Tercile
 hold on
 
 % Face units
-fexF = cellfun(@(m,md,bn) mean(nanmean(m(strcmp({xllog(ismember({xllog.batchname},bn)&([xllog.class]>0)).catsel},'Face')))<=...
-    nanmean(md(:,strcmp({xllog(ismember({xllog.batchname},bn)&([xllog.class]>0)).catsel},'Face')),2)), matchF,matchDistF,...
-    {batches(1) batches(2:3) batches(4) batches(5)});
+fexF = cellfun(@(m,md,nx) mean(nanmean(m(fsel{nx}))<=...
+    nanmean(md(:,fsel{nx}),2)), matchF,matchDistF,...
+    num2cell(1:4));
 fexiF = bonfholm(fexF.*(noFaceUnits./noFaceUnits).*...
     ((1.0*allexiF)./(1.0*allexiF)),.05);
 plot(a4,-3+5*plotord(fexiF(noFaceUnits>0)),1.1,'k*')
@@ -197,35 +193,36 @@ figure
 
 ds = @(x) linspace(min(x),max(x),30);
 b1 = {batches(1) batches(2:3) batches(4) batches(5)};
-bn = {1 [2 3] 4 5};
+bx = {1 [2 3] 4 5};
 n1 = [3 2 6 8];
 ord = [1 3 NaN 2];
+% fsel = reorg(cellfun(@(bn) strcmp({xllog(ismember({xllog.batchname},bn)&([xllog.class]>0)).catsel},'Face'),batches,'Uni',0));
 for p1 = [1 2 4]
-    d1 = nanmean(matchDistF{p1}(:,strcmp({xllog(ismember({xllog.batchname},b1{p1})&([xllog.class]>0)).catsel},'Face')),2);
+    d1 = nanmean(matchDistF{p1}(:,fsel{p1}),2);
     subplot(2,sum(~isnan(ord)),3+ord(p1))
     bar(ds(d1),histc(d1,ds(d1)),1)
     title(['Subject ' num2str(n1(p1)) ': '...
-        num2str(sum(arrayfun(@(x) factorial(sum(~isnan(SCrec{x}(:,1))&(cats(x)<200))),bn{p1})),5) ' unique permuatations']);
+        num2str(prod(arrayfun(@(x) factorial(sum(~isnan(SCrec{x}(:,1))&(cats(x)<200))),bx{p1})),5) ' unique permuatations']);
     xlabel('Concordance, face trials')
     ylabel('Count')
     ylim([0 2000])
     hold on
-    r1 = nanmean(matchF{p1}(:,strcmp({xllog(ismember({xllog.batchname},b1{p1})&([xllog.class]>0)).catsel},'Face')),2);
+    r1 = nanmean(matchF{p1}(:,fsel{p1}),2);
     plot(r1*[1 1],get(gca,'YLim'),'r')
     text(r1,max(get(gca,'YLim')),num2str(fexF(p1),2),'HorizontalAlignment','left','VerticalAlignment','top')
     hold off
     set(gca,'box','off')
 
-    d2 = nanmean(matchDist{p1},2);
+    d2 = nanmean(matchDist{p1}(:,fsel{p1}),2);
     subplot(2,sum(~isnan(ord)),ord(p1))
     bar(ds(d2),histc(d2,ds(d2)),1)
     title(['Subject ' num2str(n1(p1)) ': '...
-        num2str(sum(arrayfun(@(x) factorial(sum(~isnan(SCrec{x}(:,1)))),bn{p1})),5) ' unique permuatations']);
+        num2str(prod(arrayfun(@(x) factorial(sum(~isnan(SCrec{x}(:,1)))),bx{p1})),5) ' unique permuatations']);
     xlabel('Concordance, all trials')
     ylabel('Count')
     ylim([0 2000])
     hold on
-    r2 = nanmean(match{p1},2);
+    r2 = nanmean(match{p1}(fsel{p1}),2);
     plot(r2*[1 1],get(gca,'YLim'),'r')
     text(r2,max(get(gca,'YLim')),num2str(allexF(p1),2),'HorizontalAlignment','left','VerticalAlignment','top')
     hold off
