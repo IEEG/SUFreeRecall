@@ -175,6 +175,10 @@ meanRate(1,:) = [tempRate.Face]; meanRate(2,:) = [tempRate.Place];
 meanRate = repmat(mean(meanRate),2,1); % Place and face recalls can occur during any interval, so I average the baseline rates together to avoid bias.
 BLInds = arrayfun(@(x) x.class>0, xllog(arrayfun(@(y) any(strcmp(y.batchname,batchNames([1 3 4 5 6]))),xllog)));
 
+Bvar = arrayfun(@(a) structfun(@(x) cellfun(@(y,z) var(diff(y)/3e4)/(length(y)-1),x.spikes,repmat(x.duration',1,size(x.spikes,2))),a,'Uni',0),RecallSpikes([1 3 4 5 6]));
+tempVar = arrayfun(@(x) structfun(@(y) mean(y,1)/2,x,'Uni',0),Bvar);
+avgVar = repmat(mean([[tempVar.Face];[tempVar.Place]]),2,1);
+
 face2 = cell2mat(cellfun(@(x,ind,bl) mean(bsxfun(@rdivide,x(:,:,ind),permute(bl(ind),[3 2 1])),3),faceH,mat2cell(FaceSel,1,cellfun('size',faceH,3)),mat2cell(meanRate(1,BLInds)',cellfun('size',faceH,3),1)','Uni',0)');
 face2 = face2(any(~isnan(face2),2),:);
 place2 = cell2mat(cellfun(@(x,ind,bl) mean(bsxfun(@rdivide,x(:,:,ind),permute(bl(ind),[3 2 1])),3),placeH,mat2cell(FaceSel,1,cellfun('size',placeH,3)),mat2cell(meanRate(1,BLInds)',cellfun('size',placeH,3),1)','Uni',0)');
@@ -261,6 +265,12 @@ ylabel('\Delta firing rate: face recall (Hz)','FontSize',10)
 xlabel('\Delta firing rate: face presentation (Hz)','FontSize',10)
 text(xdat(2),get(gca,'YLim')*[0;1],{[' \rho = ' num2str(rho,2)]...
     ['\sl p\rm = ' num2str(p,1)]},'HorizontalAlignment','right','VerticalAlignment','top')
+
+fInc = (mean(indx(facecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/sum(BLInds)).*(avgVar(1,BLInds)'+var(indx(facecum',65:85))'/size(facecum,1)).^.5);
+pInc = (mean(indx(placecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/sum(BLInds)).*(avgVar(1,BLInds)'+var(indx(placecum',65:85))'/size(placecum,1)).^.5);
+
+fIncf = indx((mean(indx(facecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/sum(FaceSel)).*(avgVar(1,BLInds)'+var(mean(indx(facecum',65:85)))'/size(facecum,1)).^.5),FaceSel);
+pIncf = indx((mean(indx(placecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/sum(FaceSel)).*(avgVar(1,BLInds)'+var(mean(indx(placecum',65:85)))'/size(placecum,1)).^.5),FaceSel);
 
 set(gca,'box','off')
 set(gca,'TickLength',[.01 .01])
