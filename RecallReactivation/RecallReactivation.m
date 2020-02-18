@@ -266,8 +266,17 @@ xlabel('\Delta firing rate: face presentation (Hz)','FontSize',10)
 text(xdat(2),get(gca,'YLim')*[0;1],{[' \rho = ' num2str(rho,2)]...
     ['\sl p\rm = ' num2str(p,1)]},'HorizontalAlignment','right','VerticalAlignment','top')
 
-fInc = (mean(indx(facecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/sum(BLInds)).*(avgVar(1,BLInds)'+var(indx(facecum',65:85))'/size(facecum,1)).^.5);
-pInc = (mean(indx(placecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/sum(BLInds)).*(avgVar(1,BLInds)'+var(indx(placecum',65:85))'/size(placecum,1)).^.5);
+fCorr = NaN; fInc = zeros(size(BLInds));
+while fCorr ~= sum(fInc<1)
+    fCorr = sum(fInc<1);
+    fInc = (mean(indx(facecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/fCorr).*(avgVar(1,BLInds)'+var(indx(facecum',65:85))'/size(facecum,1)).^.5);
+end
+
+pCorr = NaN; pInc = zeros(size(BLInds));
+while pCorr ~= sum(pInc<1)
+    pCorr = sum(pInc<1);
+    pInc = (mean(indx(placecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/pCorr).*(avgVar(1,BLInds)'+var(indx(placecum',65:85))'/size(placecum,1)).^.5);
+end
 
 fIncf = indx((mean(indx(facecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/sum(FaceSel)).*(avgVar(1,BLInds)'+var(mean(indx(facecum',65:85)))'/size(facecum,1)).^.5),FaceSel);
 pIncf = indx((mean(indx(placecum',65:85))'-meanRate(1,BLInds)')./(norminv(1-.05/sum(FaceSel)).*(avgVar(1,BLInds)'+var(mean(indx(placecum',65:85)))'/size(placecum,1)).^.5),FaceSel);
